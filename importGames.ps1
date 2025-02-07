@@ -1,3 +1,12 @@
+#$ImportArgs = New-Object -TypeName PSCustomObject
+#$ImportArgs | Add-Member -MemberType NoteProperty -Name "ScanDirectory" -Value "D:\Emulation\ps4\emulators\shadps4\installed_pkg"
+#class ScriptScannedGame
+#{
+#    [string]$Path
+#    [string]$Serial
+#    [string]$Name
+#}
+
 param(
     $ImportArgs
 )
@@ -25,7 +34,7 @@ function Get-ParamSfoValue
 {
     param([string]$path, [string]$key)
 
-    # Format seems to be identical to the PS3 SFO, at least for our purposes
+    #thanks to https://psdevwiki.com/ps4/PARAM.SFO
     [byte[]]$bytes = Get-Content -LiteralPath $path -Encoding Byte -Raw
     $keyTableOffset = [System.BitConverter]::ToUInt32($bytes, 0x08)
     $dataTableOffset = [System.BitConverter]::ToUInt32($bytes, 0x0c)
@@ -59,7 +68,7 @@ function Get-ParamSfoValue
     return $null
 }
 
-[array]$games = Get-ChildItem -LiteralPath $ImportArgs.ScanDirectory -Recurse | Where { $_.Name -eq "ISO.BIN.EDAT" -or $_.Name -eq "EBOOT.BIN" }
+[array]$games = Get-ChildItem -LiteralPath $ImportArgs.ScanDirectory -Recurse  | Where-Object { $_.DirectoryName -match 'CUSA\d\d\d\d' }| Where-Object { $_.DirectoryName -match 'CUSA\d+$' } | Where { $_.Name -eq "ISO.BIN.EDAT" -or $_.Name -eq "EBOOT.BIN" }
 
 foreach ($game in $games)
 {
@@ -70,11 +79,14 @@ foreach ($game in $games)
     }
 
     $scannedGame = New-Object "Playnite.Emulators.ScriptScannedGame"
+    #$scannedGame = New-Object "ScriptScannedGame"
     $scannedGame.Path = $game.FullName
+    #echo "Game: $scannedGame"
     
     $parentDir = $game.Directory.FullName
     $paramSfoPath = Join-Path $parentDir "sce_sys"
     $paramSfoPath = Join-Path $paramSfoPath "param.sfo"
+    #echo "SFO: $paramSfoPath"
     
     if (Test-Path -LiteralPath $paramSfoPath -PathType Leaf)
     {
